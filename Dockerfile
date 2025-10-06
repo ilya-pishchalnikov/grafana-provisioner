@@ -25,5 +25,6 @@ COPY --from=builder /app/grafana-provisioner .
 
 # Copy config file
 COPY --from=builder app/config.yaml ./
+COPY --from=builder app/assets/dashboard.json ./assets/
 
 ENTRYPOINT ["/app/grafana-provisioner"]
