@@ -55,8 +55,13 @@ func waitForGrafanaAPI(client *ApiClient) error {
 		} else {			
 			client.Logger.Warn("Grafana API not ready, retrying...", "error", err, "status", resp.StatusCode, "attempt", i+1)
 		}
-
-		client.Logger.Warn("Grafana API not ready, retrying...", "error", err, "status", resp.StatusCode, "attempt", i+1)
+		
+		if resp == nil {
+			client.Logger.Warn("Grafana API not ready, retrying...", "error", err, "attempt", i+1)
+		} else {
+			client.Logger.Warn("Grafana API not ready, retrying...", "error", err, "status", resp.StatusCode, "attempt", i+1)
+		}
+		
 		time.Sleep(client.RetryDelay)
 	}
 
