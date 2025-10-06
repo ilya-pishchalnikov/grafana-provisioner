@@ -1,0 +1,26 @@
+# Configuration for grafana-provisioner
+
+log:
+    level: info # debug, info, warn, error
+    format: text # json, text
+
+grafana:
+    url: http://elmon-grafana:3000
+    token: ${GF_ADMIN_TOKEN}
+    timeout: 30s
+    retries: 5
+    retry-delay: 10s
+    dashboard:
+        name: elmon
+        file: "assets/dashboard.json"
+        import-var: DS_ELMON_METRICS
+    datasource:
+        name: "elmon_metrics"
+
+metrics-db:
+    host: elmon-postgres-main
+    port: 5432
+    user: collector
+    password: ${METRICS_DB_PASSWORD}
+    dbname: metrics
+    sslmode: disable

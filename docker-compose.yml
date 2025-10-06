@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+    #    Development Container (Сам Provisioner здесь не запускается,
+    #    он будет запущен VS Code внутри этого контейнера)
+    provisioner-dev:
+        build:
+            context: .
+            dockerfile: dev.Dockerfile
+        container_name: grafana-provisioner-dev
+        volumes:
+            - ..:/workspaces/grafana-provisioner:cached # Монтируем текущий проект
+        # Эта команда просто держит контейнер запущенным, пока VS Code подключается
+        command: /bin/sh -c "while sleep 1000; do :; done"
+

@@ -1,0 +1,663 @@
+{
+    "__inputs": [
+        {
+            "name": "DS_ELMON_METRICS",
+            "label": "elmon_metrics",
+            "description": "",
+            "type": "datasource",
+            "pluginId": "grafana-postgresql-datasource",
+            "pluginName": "PostgreSQL"
+        }
+    ],
+    "__elements": {},
+    "__requires": [
+        {
+            "type": "grafana",
+            "id": "grafana",
+            "name": "Grafana",
+            "version": "12.2.0"
+        },
+        {
+            "type": "datasource",
+            "id": "grafana-postgresql-datasource",
+            "name": "PostgreSQL",
+            "version": "12.2.0"
+        },
+        {
+            "type": "panel",
+            "id": "stat",
+            "name": "Stat",
+            "version": ""
+        },
+        {
+            "type": "panel",
+            "id": "text",
+            "name": "Text",
+            "version": ""
+        }
+    ],
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "grafana",
+                    "uid": "-- Grafana --"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "type": "dashboard"
+            }
+        ]
+    },
+    "description": "Elmon Postgre SQL servers monitoring",
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 1,
+    "id": null,
+    "links": [],
+    "panels": [
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "id": 3,
+            "panels": [],
+            "title": "perfomance - general",
+            "type": "row"
+        },
+        {
+            "gridPos": {
+                "h": 4,
+                "w": 4,
+                "x": 0,
+                "y": 1
+            },
+            "id": 10,
+            "options": {
+                "code": {
+                    "language": "plaintext",
+                    "showLineNumbers": false,
+                    "showMiniMap": false
+                },
+                "content": "<div style=\"display: flex; align-items: center; justify-content: center; height: 100%;\">\r\n<h1>${server:text}</h1>\r\n</div>\r\n",
+                "mode": "html"
+            },
+            "pluginVersion": "12.2.0",
+            "repeat": "server",
+            "repeatDirection": "v",
+            "type": "text"
+        },
+        {
+            "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "${DS_ELMON_METRICS}"
+            },
+            "description": "server uptime",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": 0
+                            },
+                            {
+                                "color": "red",
+                                "value": 0
+                            },
+                            {
+                                "color": "green",
+                                "value": 1
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 4,
+                "y": 1
+            },
+            "id": 6,
+            "options": {
+                "colorMode": "none",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.2.0",
+            "repeat": "server",
+            "repeatDirection": "v",
+            "targets": [
+                {
+                    "dataset": "metrics",
+                    "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "${DS_ELMON_METRICS}"
+                    },
+                    "editorMode": "code",
+                    "format": "table",
+                    "rawQuery": true,
+                    "rawSql": "select mv.\"time\" as time \r\n\t, (metric_value ->> 'value')::float as value\r\nfrom metric_value mv \r\ninner join metric m on m.metric_id  = mv.metric_id \r\nwhere m.metric_name = 'db_uptime'\r\n    and mv.server_id = $server  -- Используем ID из переменной\r\n    and time between $__timeFrom() and $__timeTo()\r\norder by mv.\"time\"",
+                    "refId": "A",
+                    "sql": {
+                        "columns": [
+                            {
+                                "parameters": [],
+                                "type": "function"
+                            }
+                        ],
+                        "groupBy": [
+                            {
+                                "property": {
+                                    "type": "string"
+                                },
+                                "type": "groupBy"
+                            }
+                        ],
+                        "limit": 50
+                    }
+                }
+            ],
+            "title": "uptime - $server",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "${DS_ELMON_METRICS}"
+            },
+            "description": "total transactions",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 7,
+                "y": 1
+            },
+            "id": 1,
+            "options": {
+                "colorMode": "none",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.2.0",
+            "repeat": "server",
+            "repeatDirection": "v",
+            "targets": [
+                {
+                    "dataset": "metrics",
+                    "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "${DS_ELMON_METRICS}"
+                    },
+                    "editorMode": "code",
+                    "format": "table",
+                    "rawQuery": true,
+                    "rawSql": "WITH metric_data AS (\r\n  SELECT\r\n    mv.\"time\" AS time,\r\n    (metric_value ->> 'value')::float AS value\r\n  FROM metric_value mv\r\n  INNER JOIN metric m ON m.metric_id = mv.metric_id\r\n  WHERE\r\n    m.metric_name = 'total_transactions'\r\n    AND mv.server_id = $server\r\n    AND time BETWEEN $__timeFrom() AND $__timeTo()\r\n),\r\ntime_diff AS (\r\n  SELECT\r\n    time,\r\n    value - LAG(value, 1) OVER (ORDER BY time) AS value_diff,\r\n    EXTRACT(EPOCH FROM (time - LAG(time, 1) OVER (ORDER BY time))) AS seconds_diff\r\n  FROM metric_data\r\n)\r\nSELECT\r\n  time,\r\n  value_diff / NULLIF(seconds_diff, 0) AS value -- 'value' is our TPS\r\nFROM time_diff\r\nWHERE\r\n  value_diff >= 0 AND seconds_diff > 0\r\nORDER BY\r\n  time",
+                    "refId": "A",
+                    "sql": {
+                        "columns": [
+                            {
+                                "parameters": [],
+                                "type": "function"
+                            }
+                        ],
+                        "groupBy": [
+                            {
+                                "property": {
+                                    "type": "string"
+                                },
+                                "type": "groupBy"
+                            }
+                        ],
+                        "limit": 50
+                    }
+                }
+            ],
+            "title": "TPS - $server",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "${DS_ELMON_METRICS}"
+            },
+            "description": "cache hit ratio",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 10,
+                "y": 1
+            },
+            "id": 2,
+            "options": {
+                "colorMode": "none",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.2.0",
+            "repeat": "server",
+            "repeatDirection": "v",
+            "targets": [
+                {
+                    "dataset": "metrics",
+                    "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "${DS_ELMON_METRICS}"
+                    },
+                    "editorMode": "code",
+                    "format": "table",
+                    "rawQuery": true,
+                    "rawSql": "select mv.\"time\" as time \r\n\t, (metric_value ->> 'value')::float as value\r\nfrom metric_value mv \r\ninner join metric m on m.metric_id  = mv.metric_id \r\nwhere m.metric_name = 'cache_hit_ratio'\r\n    and mv.server_id = $server  -- Используем ID из переменной\r\n    and time between $__timeFrom() and $__timeTo()\r\norder by mv.\"time\"",
+                    "refId": "A",
+                    "sql": {
+                        "columns": [
+                            {
+                                "parameters": [],
+                                "type": "function"
+                            }
+                        ],
+                        "groupBy": [
+                            {
+                                "property": {
+                                    "type": "string"
+                                },
+                                "type": "groupBy"
+                            }
+                        ],
+                        "limit": 50
+                    }
+                }
+            ],
+            "title": "cache_hit_ratio - $server",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "${DS_ELMON_METRICS}"
+            },
+            "description": "avg statements duration",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "ms"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 13,
+                "y": 1
+            },
+            "id": 5,
+            "options": {
+                "colorMode": "none",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.2.0",
+            "repeat": "server",
+            "repeatDirection": "v",
+            "targets": [
+                {
+                    "dataset": "metrics",
+                    "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "${DS_ELMON_METRICS}"
+                    },
+                    "editorMode": "code",
+                    "format": "table",
+                    "rawQuery": true,
+                    "rawSql": "with cte_total as (\r\n\tselect mv.\"time\" \r\n\t\t,   (metric_value -> 'select' ->> 'total_time_ms')::float\r\n\t\t  + (metric_value -> 'insert' ->> 'total_time_ms')::float\r\n\t\t  + (metric_value -> 'update' ->> 'total_time_ms')::float\r\n\t\t  + (metric_value -> 'delete' ->> 'total_time_ms')::float\r\n\t\t  + (metric_value -> 'ddl' ->> 'total_time_ms')::float\r\n\t\t  + (metric_value -> 'other' ->> 'total_time_ms')::float  as total_time_ms\r\n\t\t,   (metric_value -> 'select' ->> 'execution_count')::bigint\r\n\t\t  + (metric_value -> 'insert' ->> 'execution_count')::bigint\r\n\t\t  + (metric_value -> 'update' ->> 'execution_count')::bigint\r\n\t\t  + (metric_value -> 'delete' ->> 'execution_count')::bigint\r\n\t\t  + (metric_value -> 'ddl' ->> 'execution_count')::bigint\r\n\t\t  + (metric_value -> 'other' ->> 'execution_count')::bigint as execution_count\r\n\tfrom metric_value mv \r\n\tinner join metric m on m.metric_id  = mv.metric_id \r\n\twhere m.metric_name = 'total_execution_time'\r\n    and mv.server_id = $server  -- Используем ID из переменной\r\n    and time between $__timeFrom() and $__timeTo()\r\n)\r\n, cte_delta as (\r\n\tselect time\r\n\t\t, total_time_ms - lag(total_time_ms, 1) over (order by time) delta_time_ms\r\n\t\t, execution_count - lag(execution_count, 1) over (order by time) delta_count\r\n\tfrom cte_total\r\n\torder by \"time\" desc\r\n)\r\nselect time\r\n\t , delta_time_ms / delta_count as value\r\nfrom cte_delta \r\nwhere delta_count <> 0\r\norder by \"time\" desc",
+                    "refId": "A",
+                    "sql": {
+                        "columns": [
+                            {
+                                "parameters": [],
+                                "type": "function"
+                            }
+                        ],
+                        "groupBy": [
+                            {
+                                "property": {
+                                    "type": "string"
+                                },
+                                "type": "groupBy"
+                            }
+                        ],
+                        "limit": 50
+                    }
+                }
+            ],
+            "title": "avg_duration - $server",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "${DS_ELMON_METRICS}"
+            },
+            "description": "active transactions count",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": 0
+                            },
+                            {
+                                "color": "red",
+                                "value": 0
+                            },
+                            {
+                                "color": "green",
+                                "value": 1
+                            }
+                        ]
+                    },
+                    "unit": "none"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 16,
+                "y": 1
+            },
+            "id": 7,
+            "options": {
+                "colorMode": "none",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.2.0",
+            "repeat": "server",
+            "repeatDirection": "v",
+            "targets": [
+                {
+                    "dataset": "metrics",
+                    "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "${DS_ELMON_METRICS}"
+                    },
+                    "editorMode": "code",
+                    "format": "table",
+                    "rawQuery": true,
+                    "rawSql": "select time\r\n\t , (mv.metric_value ->> 'active'):: bigint as value \r\nfrom metric_value mv \r\ninner join metric m on m.metric_id  = mv.metric_id \r\nwhere m.metric_name = 'connection_count'\r\n    and mv.server_id = $server  -- Используем ID из переменной\r\n    and time between $__timeFrom() and $__timeTo()\r\norder by mv.\"time\"",
+                    "refId": "A",
+                    "sql": {
+                        "columns": [
+                            {
+                                "parameters": [],
+                                "type": "function"
+                            }
+                        ],
+                        "groupBy": [
+                            {
+                                "property": {
+                                    "type": "string"
+                                },
+                                "type": "groupBy"
+                            }
+                        ],
+                        "limit": 50
+                    }
+                }
+            ],
+            "title": "active_tx - $server",
+            "type": "stat"
+        },
+        {
+            "datasource": {
+                "type": "grafana-postgresql-datasource",
+                "uid": "${DS_ELMON_METRICS}"
+            },
+            "description": "count of lock waits",
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "none"
+                },
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 19,
+                "y": 1
+            },
+            "id": 8,
+            "options": {
+                "colorMode": "none",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": ["lastNotNull"],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.2.0",
+            "repeat": "server",
+            "repeatDirection": "v",
+            "targets": [
+                {
+                    "dataset": "metrics",
+                    "datasource": {
+                        "type": "grafana-postgresql-datasource",
+                        "uid": "${DS_ELMON_METRICS}"
+                    },
+                    "editorMode": "code",
+                    "format": "table",
+                    "rawQuery": true,
+                    "rawSql": "select mv.\"time\" as time \r\n\t, (metric_value ->> 'value')::float as value\r\nfrom metric_value mv \r\ninner join metric m on m.metric_id  = mv.metric_id \r\nwhere m.metric_name = 'wait_locks'\r\n    and mv.server_id = $server  -- Используем ID из переменной\r\n    and time between $__timeFrom() and $__timeTo()\r\norder by mv.\"time\"",
+                    "refId": "A",
+                    "sql": {
+                        "columns": [
+                            {
+                                "parameters": [],
+                                "type": "function"
+                            }
+                        ],
+                        "groupBy": [
+                            {
+                                "property": {
+                                    "type": "string"
+                                },
+                                "type": "groupBy"
+                            }
+                        ],
+                        "limit": 50
+                    }
+                }
+            ],
+            "title": "lock_waits - $server",
+            "type": "stat"
+        },
+        {
+            "collapsed": false,
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 9
+            },
+            "id": 9,
+            "panels": [],
+            "title": "Maitenance",
+            "type": "row"
+        }
+    ],
+    "refresh": "auto",
+    "schemaVersion": 42,
+    "tags": [],
+    "templating": {
+        "list": [
+            {
+                "allowCustomValue": false,
+                "current": {},
+                "datasource": {
+                    "type": "grafana-postgresql-datasource",
+                    "uid": "${DS_ELMON_METRICS}"
+                },
+                "definition": "select server_id as __value, name as __text from server",
+                "description": "Monitored server",
+                "multi": true,
+                "name": "server",
+                "options": [],
+                "query": "select server_id as __value, name as __text from server",
+                "refresh": 1,
+                "regex": "",
+                "type": "query"
+            }
+        ]
+    },
+    "time": {
+        "from": "now-15m",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "Elmon-test",
+    "uid": "e9995000-c4c6-4492-9514-1c9bfa4eb402",
+    "version": 3,
+    "weekStart": ""
+}
