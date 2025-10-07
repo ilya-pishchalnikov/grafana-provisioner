@@ -3,6 +3,7 @@ package grafana
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -202,7 +203,7 @@ func (client *ApiClient) doRequest(method, url string, body io.Reader) ([]byte, 
 
 		// Handle error response from API
 		errorMsg := fmt.Sprintf("Grafana API error (Status %d) on attempt %d: %s", resp.StatusCode, i+1, string(respBody))
-		lastErr = fmt.Errorf(errorMsg)
+		lastErr = errors.New(errorMsg)
 		client.Logger.Warn("Grafana API returned error, retrying...", "error", errorMsg, "attempt", i+1)
 
 		// Rewind body if it's a seekable buffer (for retry)
@@ -271,4 +272,60 @@ func (client *ApiClient) CreateFolder(title string, log *slog.Logger) (*FolderRe
 
 	client.Logger.Info("Folder successfully created", "title", response.Title, "uid", response.UID)
 	return &response, nil
+}
+
+// SearchDashboards fetches a list of all existing dashboards and folders from the /api/search endpoint.
+func (client *ApiClient) SearchDashboards(log *slog.Logger) ([]DashboardSearchResponse, error) {
+	// Конструируем полный URL API для поиска дашбордов.
+	endpoint := fmt.Sprintf("%s/api/search", client.URL)
+
+	// Выполняем запрос с использованием повторных попыток
+	body, err := client.doRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Десериализуем тело ответа в срез DashboardResponse
+	var searchResults []DashboardSearchResponse
+	
+	if err := json.Unmarshal(body, &searchResults); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal dashboard search response: %w", err)
+	}
+
+	log.Info("grafana dashboard search request successfully parsed")
+
+	return searchResults, nil
+}
+
+// FindFirstDashboardByFolderAndName searches for a dashboard by its title and the title of its containing folder.
+func (client *ApiClient) FindFirstDashboardByFolderAndName(name string, folder string, log *slog.Logger) (DashboardSearchResponse, error) {
+	log.Info("Searching for dashboard", "name", name, "folder", folder)
+	
+	searchResults, err := client.SearchDashboards(log)
+	if err != nil {
+		return DashboardSearchResponse{}, fmt.Errorf("failed to search dashboards: %w", err)
+	}
+
+	// Итерируемся по результатам, чтобы найти дашборд, который соответствует обоим критериям
+	for _, result := range searchResults {
+		// 1. Должен быть дашбордом (type "dash-db")
+		if result.Type != "dash-db" {
+			continue
+		}
+		
+		// 2. Должен совпадать по имени (Title)
+		if result.Title == name {
+			// 3. Должен совпадать по имени папки (FolderTitle).
+			// Специальная обработка для папки "General" (Общие): Grafana API возвращает FolderTitle="" для дашбордов в "General"
+			isGeneralFolder := strings.EqualFold(folder, "General") && (result.FolderTitle == "" || strings.EqualFold(result.FolderTitle, "General"))
+			isSpecificFolder := result.FolderTitle == folder
+
+			if isSpecificFolder || isGeneralFolder {
+				log.Info("Dashboard found", "name", name, "folder", result.FolderTitle)
+				return result, nil
+			}
+		}
+	}
+
+	return DashboardSearchResponse{}, nil
 }

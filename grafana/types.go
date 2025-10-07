@@ -105,3 +105,15 @@ type CreateFolderRequest struct {
 	UID   string `json:"uid,omitempty"` // Optional UID
 	Title string `json:"title"`
 }
+
+// DashboardSearchResponse является структурой для дашборда, возвращаемого конечной точкой /api/search
+type DashboardSearchResponse struct {
+	ID          int    `json:"id"`
+	UID         string `json:"uid"`
+	Title       string `json:"title"`
+	URI         string `json:"uri"` 
+	Type        string `json:"type"`
+	FolderID    int    `json:"folderId"`
+	FolderUID   string `json:"folderUid"`
+	FolderTitle string `json:"folderTitle"`
+}

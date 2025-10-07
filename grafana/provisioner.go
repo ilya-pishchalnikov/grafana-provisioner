@@ -194,6 +194,16 @@ func provisionDashboard(client *ApiClient, cfg Config, dsUID string, folderUID s
 		return fmt.Errorf("failed to parse dashboard JSON: %w", err)
 	}
 
+	existingDashboard, err := client.FindFirstDashboardByFolderAndName(cfg.Dashboard.Name, cfg.Dashboard.Folder, log)
+	if err != nil {
+		return fmt.Errorf("failed to find existsting dashboard: %w", err)
+	}
+
+	rawDashboard["title"] = cfg.Dashboard.Name
+	rawDashboard["id"] = existingDashboard.ID
+	rawDashboard["uid"] = existingDashboard.UID
+
+
 	inputValues := map[string]string{
         cfg.Dashboard.ImportVar: dsUID,
     }
