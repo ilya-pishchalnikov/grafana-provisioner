@@ -61,6 +61,7 @@ func main() {
 		},
 		Dashboard: grafana.Dashboard{
 			Name:      appConfig.Grafana.Dashboard.Name,
+			Folder:    appConfig.Grafana.Dashboard.Folder,
 			File:      appConfig.Grafana.Dashboard.File,
 			ImportVar: appConfig.Grafana.Dashboard.ImportVar,
 		},

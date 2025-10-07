@@ -1,7 +1,3 @@
-Based on the provided Go source code and configuration files, here is a detailed `README.md` file for the `grafana-provisioner` application.
-
-The application's primary function is to **provision a PostgreSQL data source and import a specific dashboard** into a Grafana instance, driven by a configuration file and environment variables.
-
 # grafana-provisioner
 
 A lightweight, opinionated Go application designed to provision a PostgreSQL data source and import a Grafana dashboard from a JSON file using the Grafana HTTP API.

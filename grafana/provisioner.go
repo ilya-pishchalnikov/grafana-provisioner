@@ -26,8 +26,14 @@ func RunProvisioning(cfg Config, log *slog.Logger) error {
 		return fmt.Errorf("data source provisioning failed: %w", err)
 	}
 
-	// 3. Provision Dashboard
-	if err := provisionDashboard(client, cfg, dsResponse.Datasource.UID, log); err != nil {
+	// 3. Provision Folder
+	folderResponse, err := provisionFolder(client, cfg, log)
+	if err != nil {
+		return fmt.Errorf("folder provisioning failed: %w", err)
+	}
+
+	// 4. Provision Dashboard
+	if err := provisionDashboard(client, cfg, dsResponse.Datasource.UID, folderResponse.UID, log); err != nil {
 		return fmt.Errorf("dashboard provisioning failed: %w", err)
 	}
 
@@ -67,7 +73,6 @@ func waitForGrafanaAPI(client *ApiClient) error {
 
 	return fmt.Errorf("failed to reach Grafana API after %d attempts", client.Retries)
 }
-
 
 // Helper to create the data source
 func provisionDataSource(client *ApiClient, cfg Config, log *slog.Logger) (*CreateDataSourceResponse, error) {
@@ -150,8 +155,34 @@ func provisionDataSource(client *ApiClient, cfg Config, log *slog.Logger) (*Crea
 	return resp, err
 }
 
+
+// Helper to create the folder
+func provisionFolder(client *ApiClient, cfg Config, log *slog.Logger) (*FolderResponse, error) {
+	// Получение списка всех существующих источников данных
+	existingFolders, err := client.GetFolders(log)
+    if err != nil {
+        return nil, fmt.Errorf("failed to list existing data sources: %w", err)
+    }
+
+    // Проверка, существует ли источник данных с тем же именем
+    for _, folder := range existingFolders {
+        if folder.Title == cfg.Dashboard.Folder {
+            log.Info(fmt.Sprintf("folder '%s' already exists (ID: %d). Skipping creation.", folder.Title, folder.ID))
+
+			return &FolderResponse{
+				ID:    folder.ID,
+				UID:   folder.UID,
+				Title: folder.Title,
+			}, nil
+        }
+    }
+
+	// Attempt to create the folder
+	return client.CreateFolder(cfg.Dashboard.Folder, log)
+}
+
 // Helper to import the dashboard
-func provisionDashboard(client *ApiClient, cfg Config, dsUID string, log *slog.Logger) error {
+func provisionDashboard(client *ApiClient, cfg Config, dsUID string, folderUID string, log *slog.Logger) error {
 	log.Info("Reading dashboard file", "file", cfg.Dashboard.File)
 	data, err := os.ReadFile(cfg.Dashboard.File)
 	if err != nil {
@@ -179,6 +210,7 @@ func provisionDashboard(client *ApiClient, cfg Config, dsUID string, log *slog.L
 	importRequest := &DashboardImportRequest{
 		Dashboard: rawDashboard,
 		Inputs: inputs,
+		FolderUID: folderUID,
 		Overwrite: true, // Always overwrite to apply latest changes
 		Message:   "Automated provisioning by grafana-provisioner",
 	}

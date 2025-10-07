@@ -43,6 +43,7 @@ type DbConnectionConfig struct {
 // Dashboard defines parameters of grafana dashboard
 type Dashboard struct {
 	Name      string `mapstructure:"name"`
+	Folder    string `mapstructure:"folder"`
 	File      string `mapstructure:"file"`
 	ImportVar string `mapstructure:"import-var"`
 }
@@ -64,23 +65,22 @@ type GrafanaConfig struct {
 }
 
 
-func (d *Duration) Decode(value interface{}) error {
-	var s string
-	switch v := value.(type) {
-	case string:
-		s = v
-	default:
-		return fmt.Errorf("invalid type for Duration: %T", value)
+// customDurationHook is a mapstructure hook for parsing time strings
+func customDurationHook() mapstructure.DecodeHookFunc {
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		if t != reflect.TypeOf(Duration{}) {
+			return data, nil
+		}
+		if f.Kind() != reflect.String {
+			return data, nil
+		}
+		d, err := time.ParseDuration(data.(string))
+		if err != nil {
+			return nil, err
+		}
+		return Duration{Duration: d}, nil
 	}
-
-	dur, err := time.ParseDuration(s)
-	if err != nil {
-		return err
-	}
-	d.Duration = dur
-	return nil
 }
-
 
 
 // Load reads and parses the configuration file
@@ -110,20 +110,7 @@ func Load(configPath string) (*AppConfig, error) {
 	var cfg AppConfig
 
 	// Define the DecodeHook to handle string-to-Duration conversion
-	durationHook := mapstructure.ComposeDecodeHookFunc(
-		mapstructure.StringToTimeDurationHookFunc(), // This is useful but not strictly needed for your custom type
-		func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
-			// Check if the source is a string and the target is the config.Duration type
-			if f.Kind() == reflect.String && t == reflect.TypeOf(Duration{}) {
-				d := Duration{}
-				if err := d.Decode(data); err != nil {
-					return nil, err
-				}
-				return d, nil
-			}
-			return data, nil
-		},
-	)
+	durationHook := mapstructure.ComposeDecodeHookFunc(customDurationHook())
 
 	decoderConfig := mapstructure.DecoderConfig{
 		WeaklyTypedInput: true,

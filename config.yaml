@@ -13,6 +13,7 @@ grafana:
     dashboard:
         name: elmon
         file: "assets/dashboard.json"
+        folder: elmon
         import-var: DS_ELMON_METRICS
     datasource:
         name: "elmon_metrics"

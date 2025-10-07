@@ -65,6 +65,7 @@ type Database struct {
 // Database represents the data for dashboard creation
 type Dashboard struct {
 	Name      string
+	Folder    string
 	File      string
 	ImportVar string
 }
@@ -89,4 +90,18 @@ type Config struct {
 	Database       Database
 	Dashboard      Dashboard
 	DataSource     DataSource
+}
+
+// FolderResponse is the structure for an existing Grafana folder
+type FolderResponse struct {
+	ID    int    `json:"id"`
+	UID   string `json:"uid"`
+	Title string `json:"title"`
+	URL   string `json:"url"`
+}
+
+// CreateFolderRequest is the structure for creating a folder via API.
+type CreateFolderRequest struct {
+	UID   string `json:"uid,omitempty"` // Optional UID
+	Title string `json:"title"`
 }

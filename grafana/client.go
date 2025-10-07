@@ -214,3 +214,61 @@ func (client *ApiClient) doRequest(method, url string, body io.Reader) ([]byte, 
 
 	return nil, fmt.Errorf("failed to execute request after %d attempts: %w", client.Retries, lastErr)
 }
+
+// GetFolders fetches the list of all existing dashboard folders
+func (client *ApiClient) GetFolders(log *slog.Logger) ([]FolderResponse, error) {
+	// Construct the full API URL for folders
+	endpoint := fmt.Sprintf("%s/api/folders", client.URL)
+
+	// Execute the request using retries
+	body, err := client.doRequest("GET", endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the response body into a slice of FolderResponse
+	var folders []FolderResponse
+	
+	if err := json.Unmarshal(body, &folders); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal folders response: %w", err)
+	}
+
+	log.Info("grafana folders request successfully parsed")
+
+	// Return the struct
+	return folders, nil
+}
+
+// CreateFolder sends a POST request to create a new folder.
+func (client *ApiClient) CreateFolder(title string, log *slog.Logger) (*FolderResponse, error) {
+	client.Logger.Info("Creating new folder", "title", title)
+
+	requestData := CreateFolderRequest{
+		Title: title,
+	}
+
+	url := client.URL + "/api/folders"
+	data, err := json.Marshal(requestData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal folder model: %w", err)
+	}
+
+	respBody, err := client.doRequest("POST", url, bytes.NewBuffer(data))
+	if err != nil {
+		// Grafana API returns 409 if folder with the same name already exists.
+		if strings.Contains(err.Error(), "Status 409") {
+			client.Logger.Warn("Folder already exists (409 Conflict), this is treated as success for provisioning", "title", title)
+
+			return nil, fmt.Errorf("folder creation failed (409 Conflict): folder with title '%s' already exists", title)
+		}
+		return nil, fmt.Errorf("folder creation failed: %w", err)
+	}
+
+	var response FolderResponse
+	if err := json.Unmarshal(respBody, &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal folder creation response: %w", err)
+	}
+
+	client.Logger.Info("Folder successfully created", "title", response.Title, "uid", response.UID)
+	return &response, nil
+}
