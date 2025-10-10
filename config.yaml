@@ -18,6 +18,10 @@ grafana:
     datasource:
         name: "elmon_metrics"
 
+folders:
+    - name: elmon
+    - name: test1
+
 metrics-db:
     host: elmon-postgres-main
     port: 5432

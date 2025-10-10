@@ -73,11 +73,15 @@ func main() {
 			User:      appConfig.MetricsDB.User,
 			Password:  appConfig.MetricsDB.Password,
 			SSLMode:   appConfig.MetricsDB.SslMode,
-			IsDefault: false, 
-	
-
+			IsDefault: false,
 		},
+		// Added the list of folders from appConfig to the provisioner config for use in provisionFolders
+		FoldersMapping: nil, // Will be populated in grafana.RunProvisioning
 	}
+
+	// Set the Folders field in the Dashboard struct to the list of folders from appConfig
+	// This is a small hack, but it simplifies parameter passing for the new provisionFolders function.
+	provisionerConfig.Folders = appConfig.Folders
 
 	// 4. Run Provisioning
 	if err := grafana.RunProvisioning(provisionerConfig, log); err != nil {

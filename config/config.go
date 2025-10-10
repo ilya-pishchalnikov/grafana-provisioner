@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
@@ -20,46 +21,53 @@ type Duration struct {
 // AppConfig is the root structure containing all application configuration
 type AppConfig struct {
 	Log       LogConfig          `mapstructure:"log"`
-	Grafana   GrafanaConfig      `mapstructure:"grafana"`
+	Grafana   GrafanaConfig      `mapstructure:"grafana" validate:"required"`
+	Folders   []FolderConfig     `mapstructure:"folders"`
 	MetricsDB DbConnectionConfig `mapstructure:"metrics-db"`
 }
 
 // LogConfig defines logging parameters
 type LogConfig struct {
-	Level  string `mapstructure:"level"`  // debug, info, warn, error
-	Format string `mapstructure:"format"` // json, text
+	Level  string `mapstructure:"level" validate:"oneof=debug info warn error"`  // debug, info, warn, error
+	Format string `mapstructure:"format" validate:"oneof=debug json text"` // json, text
+	File   string `mapstructure:"file"`
 }
 
 // DbConnectionConfig defines database connection parameters for Grafana DataSource
 type DbConnectionConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"password"`
-	DbName   string `mapstructure:"dbname"`
-	SslMode  string `mapstructure:"sslmode"`
+    Host     string `mapstructure:"host" validate:"required"`
+    Port     int    `mapstructure:"port" validate:"required,min=1,max=65535"`
+    User     string `mapstructure:"user" validate:"required"`
+    Password string `mapstructure:"password" validate:"required"`
+    DbName   string `mapstructure:"dbname" validate:"required"`
+    SslMode  string `mapstructure:"sslmode" validate:"oneof=disable require verify-ca verify-full"`
+}
+
+// DbConnectionConfig defines grafana folder parameters
+type FolderConfig struct {
+	Name string `mapstructure:"name" validate:"required"`
 }
 
 // Dashboard defines parameters of grafana dashboard
 type Dashboard struct {
-	Name      string `mapstructure:"name"`
+	Name      string `mapstructure:"name" validate:"required"`
 	Folder    string `mapstructure:"folder"`
-	File      string `mapstructure:"file"`
+	File      string `mapstructure:"file" validate:"required"`
 	ImportVar string `mapstructure:"import-var"`
 }
 
 // Dashboard defines parameters of grafana datasource
 type DataSource struct {
-	Name      string `mapstructure:"name"`
+	Name      string `mapstructure:"name" validate:"required"`
 }
 
 // GrafanaConfig defines parameters for Grafana API client and provisioning
 type GrafanaConfig struct {
-	URL            string        `mapstructure:"url"`
-	Token          string        `mapstructure:"token"`
-	Timeout        Duration      `mapstructure:"timeout"`
-	Retries        int           `mapstructure:"retries"`
-	RetryDelay     Duration      `mapstructure:"retry-delay"`
+	URL            string        `mapstructure:"url" validate:"required"`
+	Token          string        `mapstructure:"token" validate:"required"`
+	Timeout        Duration      `mapstructure:"timeout" validate:"gt=0"`
+	Retries        int           `mapstructure:"retries" validate:"gt=0"`
+	RetryDelay     Duration      `mapstructure:"retry-delay" validate:"gt=0"`
 	Dashboard      Dashboard     `mapstructure:"dashboard"`
 	DataSource     DataSource    `mapstructure:"datasource"`
 }
@@ -80,6 +88,17 @@ func customDurationHook() mapstructure.DecodeHookFunc {
 		}
 		return Duration{Duration: d}, nil
 	}
+}
+
+// durationValueRetriever is a custom function to help validator/v10
+// understand how to get the value from our custom 'Duration' type.
+// It extracts the embedded time.Duration for validation.
+func durationValueRetriever(field reflect.Value) interface{} {
+	if field.Type() == reflect.TypeOf(Duration{}) {
+		// Return the embedded time.Duration value, which is an int64 (nanoseconds)
+		return field.Field(0).Interface()
+	}
+	return nil
 }
 
 
@@ -128,9 +147,12 @@ func Load(configPath string) (*AppConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// Validate essential settings
-	if cfg.Grafana.Token == "" {
-		return nil, fmt.Errorf("grafana.token is required (e.g., GF_ADMIN_TOKEN)")
+	validate := validator.New()
+
+	validate.RegisterCustomTypeFunc(durationValueRetriever, Duration{})
+
+	if err := validate.Struct(cfg); err != nil {
+		return nil, fmt.Errorf("config validation error: %w", err)
 	}
 
 	return &cfg, nil

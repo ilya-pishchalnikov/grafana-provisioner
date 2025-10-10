@@ -26,19 +26,99 @@ func RunProvisioning(cfg Config, log *slog.Logger) error {
 		return fmt.Errorf("data source provisioning failed: %w", err)
 	}
 
-	// 3. Provision Folder
-	folderResponse, err := provisionFolder(client, cfg, log)
-	if err != nil {
+	// 3. Provision Folders from config and create mapping
+	if err := provisionFolders(client, &cfg, log); err != nil {
 		return fmt.Errorf("folder provisioning failed: %w", err)
 	}
 
-	// 4. Provision Dashboard
-	if err := provisionDashboard(client, cfg, dsResponse.Datasource.UID, folderResponse.UID, log); err != nil {
+	// 4. Validate and get folder UID for the dashboard
+	dashboardFolderUID, err := getDashboardFolderUID(cfg, log)
+	if err != nil {
+		return fmt.Errorf("dashboard folder validation failed: %w", err)
+	}
+
+	// 5. Provision Dashboard
+	if err := provisionDashboard(client, cfg, dsResponse.Datasource.UID, dashboardFolderUID, log); err != nil {
 		return fmt.Errorf("dashboard provisioning failed: %w", err)
 	}
 
 	log.Info("Grafana provisioning completed successfully")
 	return nil
+}
+
+// provisionFolders creates all folders defined in the config and stores their IDs/UIDs in Config.FoldersMapping.
+func provisionFolders(client *ApiClient, cfg *Config, log *slog.Logger) error {
+	cfg.FoldersMapping = make(map[string]FolderMapping)
+	
+	// Create a map of folders from the main config (which contains the names)
+	folderConfigs := cfg.Folders
+
+	// Ensure the list is not empty
+	if len(folderConfigs) == 0 {
+		log.Info("No folders configured for provisioning, skipping folder creation.")
+		return nil
+	}
+
+	log.Info("Provisioning Grafana folders")
+	for _, folderConfig := range folderConfigs {
+		resp, err := client.CreateFolderIfNotExists(folderConfig.Name, log)
+		if err != nil {
+			return fmt.Errorf("failed to provision folder '%s': %w", folderConfig.Name, err)
+		}
+		
+		// Store the mapping for later use (e.g., dashboard creation)
+		cfg.FoldersMapping[resp.Title] = FolderMapping{
+			ID:    resp.ID,
+			UID:   resp.UID,
+			Title: resp.Title,
+		}
+	}
+	
+	// Handle the 'General' folder which is always present but not in the config list
+	// We only need to retrieve its UID/ID if the dashboard config points to it.
+	if _, ok := cfg.FoldersMapping["General"]; !ok && strings.EqualFold(cfg.Dashboard.Folder, "General") {
+		resp, err := client.GetFolderByTitle("General")
+		if err != nil {
+			log.Warn("Failed to retrieve 'General' folder details. Assuming default UID/ID will work.", "error", err)
+			// Will rely on the dashboard creation logic to handle the default folder if Get fails
+		} else {
+			cfg.FoldersMapping["General"] = FolderMapping{
+				ID:    resp.ID,
+				UID:   resp.UID,
+				Title: resp.Title,
+			}
+		}
+	}
+
+	log.Info("All configured folders provisioned and mapped.")
+	return nil
+}
+
+// getDashboardFolderUID validates that the folder required for the dashboard exists in the mapping
+// and returns its UID.
+func getDashboardFolderUID(cfg Config, log *slog.Logger) (string, error) {
+	requiredFolder := cfg.Dashboard.Folder
+
+	// Handle case: Dashboard goes into the 'General' folder (Grafana default)
+	if strings.EqualFold(requiredFolder, "General") {
+		// Check if General was mapped (it might have been mapped in provisionFolders)
+		if mapping, ok := cfg.FoldersMapping["General"]; ok {
+			log.Info("Using 'General' folder UID from mapping", "uid", mapping.UID)
+			return mapping.UID, nil
+		}
+		// If not mapped, Grafana API typically accepts an empty string or 'General' as folderUID
+		log.Info("Using default folder UID for 'General' folder (empty string or General)")
+		return "", nil 
+	}
+	
+	// Check if the required folder is in our mapping
+	mapping, ok := cfg.FoldersMapping[requiredFolder]
+	if !ok {
+		// This is the required exception/error case: folder is not in the config list
+		return "", fmt.Errorf("dashboard folder '%s' is not defined in the 'folders' configuration list. Please add it to provision it", requiredFolder)
+	}
+
+	return mapping.UID, nil
 }
 
 // Helper to wait for Grafana API to be ready
@@ -155,32 +235,6 @@ func provisionDataSource(client *ApiClient, cfg Config, log *slog.Logger) (*Crea
 	return resp, err
 }
 
-
-// Helper to create the folder
-func provisionFolder(client *ApiClient, cfg Config, log *slog.Logger) (*FolderResponse, error) {
-	// Получение списка всех существующих источников данных
-	existingFolders, err := client.GetFolders(log)
-    if err != nil {
-        return nil, fmt.Errorf("failed to list existing data sources: %w", err)
-    }
-
-    // Проверка, существует ли источник данных с тем же именем
-    for _, folder := range existingFolders {
-        if folder.Title == cfg.Dashboard.Folder {
-            log.Info(fmt.Sprintf("folder '%s' already exists (ID: %d). Skipping creation.", folder.Title, folder.ID))
-
-			return &FolderResponse{
-				ID:    folder.ID,
-				UID:   folder.UID,
-				Title: folder.Title,
-			}, nil
-        }
-    }
-
-	// Attempt to create the folder
-	return client.CreateFolder(cfg.Dashboard.Folder, log)
-}
-
 // Helper to import the dashboard
 func provisionDashboard(client *ApiClient, cfg Config, dsUID string, folderUID string, log *slog.Logger) error {
 	log.Info("Reading dashboard file", "file", cfg.Dashboard.File)
@@ -204,6 +258,12 @@ func provisionDashboard(client *ApiClient, cfg Config, dsUID string, folderUID s
 	rawDashboard["uid"] = existingDashboard.UID
 
 
+	// Get the target folder UID. If 'folderUID' is empty (for 'General' folder), the API handles it.
+	// If the dashboard folder is 'General', we pass an empty folderUID to the import API call.
+	if strings.EqualFold(cfg.Dashboard.Folder, "General") {
+		folderUID = "" // Grafana API uses empty/nil folder UID for the 'General' folder
+	}
+	
 	inputValues := map[string]string{
         cfg.Dashboard.ImportVar: dsUID,
     }

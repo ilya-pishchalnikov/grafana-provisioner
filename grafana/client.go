@@ -274,6 +274,66 @@ func (client *ApiClient) CreateFolder(title string, log *slog.Logger) (*FolderRe
 	return &response, nil
 }
 
+// CreateFolderIfNotExists creates a folder if it doesn't exist.
+// Returns the folder response whether it was created or already existed.
+func (client *ApiClient) CreateFolderIfNotExists(title string, log *slog.Logger) (*FolderResponse, error) {
+	// The API for folder creation returns a conflict error (409) if the folder already exists.
+	// We handle this by attempting creation and then searching if a conflict occurs.
+	
+	createRequest := CreateFolderRequest{
+		Title: title,
+	}
+
+	body, err := json.Marshal(createRequest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal create folder request: %w", err)
+	}
+
+	foldersResponse, err := client.GetFolders(log)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch folders list: %w", err)
+	}
+
+	for _, folder := range foldersResponse {
+		if folder.Title == title {
+			return &folder, nil
+		}
+	}
+
+	folderResponse := &FolderResponse{}
+	
+	// Execute the request to create a folder
+	resp, err := client.doRequest("POST", client.URL + "/api/folders", bytes.NewReader(body))
+	if err != nil {
+		return nil, fmt.Errorf("failed to make create folder request: %w", err)
+	}
+	// Folder created successfully
+	if err := json.NewDecoder(bytes.NewReader(resp)).Decode(folderResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode folder creation response: %w", err)
+	}
+	
+	client.Logger.Info("Successfully created folder", "folder", folderResponse.Title, "uid", folderResponse.UID)
+	return folderResponse, nil
+}
+
+// GetFolderByTitle searches for a folder by its title.
+func (client *ApiClient) GetFolderByTitle(title string) (*FolderResponse, error) {
+	// URL escape the title for API call
+	urlPath := fmt.Sprintf("%s/api/folders/%s", client.URL, strings.ReplaceAll(title, " ", "%20"))
+	
+	resp, err := client.doRequest("GET", urlPath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make get folder request: %w", err)
+	}
+	
+	folderResponse := &FolderResponse{}
+	if err := json.NewDecoder(bytes.NewReader(resp)).Decode(folderResponse); err != nil {
+		return nil, fmt.Errorf("failed to decode get folder response: %w", err)
+	}
+
+	return folderResponse, nil
+}
+
 // SearchDashboards fetches a list of all existing dashboards and folders from the /api/search endpoint.
 func (client *ApiClient) SearchDashboards(log *slog.Logger) ([]DashboardSearchResponse, error) {
 	// Конструируем полный URL API для поиска дашбордов.

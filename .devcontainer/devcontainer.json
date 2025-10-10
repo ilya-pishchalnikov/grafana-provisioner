@@ -1,5 +1,6 @@
 {
     "name": "Go Development",
+    "image": "vcs-grafana-provisioner-dev",
     "build": {
         "dockerfile": "../dev.Dockerfile"
     },

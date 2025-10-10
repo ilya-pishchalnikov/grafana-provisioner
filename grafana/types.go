@@ -1,6 +1,9 @@
 package grafana
 
-import "time"
+import (
+	"grafana-provisioner/config"
+	"time"
+)
 
 // ClientParams defines parameters required for creating Grafana client
 type ClientParams struct {
@@ -84,12 +87,21 @@ type DataSource struct {
 	Database   string
 }
 
+// FolderMapping holds the runtime information about a provisioned folder.
+type FolderMapping struct {
+	ID    int
+	UID   string
+	Title string
+}
+
 // Config defines the configuration subset needed for provisioning
 type Config struct {
 	Grafana        ClientParams
 	Database       Database
 	Dashboard      Dashboard
 	DataSource     DataSource
+	Folders        []config.FolderConfig 
+	FoldersMapping map[string]FolderMapping
 }
 
 // FolderResponse is the structure for an existing Grafana folder
