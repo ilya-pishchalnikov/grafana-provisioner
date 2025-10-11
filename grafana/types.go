@@ -88,7 +88,7 @@ type FolderMapping struct {
 // Config defines the configuration subset needed for provisioning
 type Config struct {
 	Grafana        ClientParams
-	Dashboard      Dashboard
+	Dashboards     []Dashboard
 	DataSources    []DataSource
 	Folders        []config.FolderConfig 
 	FoldersMapping map[string]FolderMapping

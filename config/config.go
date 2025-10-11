@@ -24,6 +24,7 @@ type AppConfig struct {
 	Grafana     GrafanaConfig  `mapstructure:"grafana" validate:"required"`
 	Folders     []FolderConfig `mapstructure:"folders"`
 	DataSources []DataSource   `mapstructure:"datasources"`
+	Dashboards  []Dashboard    `mapstructure:"dashboards"`
 }
 
 // LogConfig defines logging parameters
@@ -65,7 +66,6 @@ type GrafanaConfig struct {
 	Timeout        Duration      `mapstructure:"timeout" validate:"gt=0"`
 	Retries        int           `mapstructure:"retries" validate:"gt=0"`
 	RetryDelay     Duration      `mapstructure:"retry-delay" validate:"gt=0"`
-	Dashboard      Dashboard     `mapstructure:"dashboard"`
 }
 
 

@@ -61,6 +61,20 @@ func main() {
 		dataSources = append(dataSources, dataSource)
 	}
 
+	dashboards := []grafana.Dashboard{}
+
+	for _, dashboardConfig := range appConfig.Dashboards {
+		dashboard := grafana.Dashboard {
+			Name:       dashboardConfig.Name,
+			Folder:     dashboardConfig.Folder,
+			File:       dashboardConfig.File,
+			DataSource: dashboardConfig.DataSource,
+			ImportVar:  dashboardConfig.ImportVar,
+		}
+
+		dashboards = append(dashboards, dashboard)
+	}
+
 
 	provisionerConfig := grafana.Config{
 		Grafana: grafana.ClientParams{
@@ -70,19 +84,14 @@ func main() {
 			Retries:    appConfig.Grafana.Retries,
 			RetryDelay: appConfig.Grafana.RetryDelay.Duration,
 		},
-		Dashboard: grafana.Dashboard{
-			Name:       appConfig.Grafana.Dashboard.Name,
-			Folder:     appConfig.Grafana.Dashboard.Folder,
-			File:       appConfig.Grafana.Dashboard.File,
-			DataSource: appConfig.Grafana.Dashboard.DataSource,
-			ImportVar:  appConfig.Grafana.Dashboard.ImportVar,
-		},
+		Dashboards: dashboards,
 		DataSources: dataSources,
 		FoldersMapping: nil, // Will be populated in grafana.RunProvisioning
 	}
 
 	// Set the Folders field in the Dashboard struct to the list of folders from appConfig
 	// This is a small hack, but it simplifies parameter passing for the new provisionFolders function.
+	// TODO decouple it
 	provisionerConfig.Folders = appConfig.Folders
 
 	// 4. Run Provisioning
