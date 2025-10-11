@@ -43,6 +43,25 @@ func main() {
 
 
 	// 3. Prepare Grafana Provisioning Configuration
+
+	dataSources := []grafana.DataSource{}
+
+	for _, dataSourceConfig := range appConfig.DataSources {
+		dataSource := grafana.DataSource{
+			Name:      dataSourceConfig.Name,
+			Type:      "grafana-postgresql-datasource",
+			URL:       dataSourceConfig.Host + ":" + strconv.Itoa(dataSourceConfig.Port),
+			Database:  dataSourceConfig.DbName,
+			User:      dataSourceConfig.User,
+			Password:  dataSourceConfig.Password,
+			SSLMode:   dataSourceConfig.SslMode,
+			IsDefault: false,
+		}
+
+		dataSources = append(dataSources, dataSource)
+	}
+
+
 	provisionerConfig := grafana.Config{
 		Grafana: grafana.ClientParams{
 			URL:        appConfig.Grafana.URL,
@@ -51,31 +70,14 @@ func main() {
 			Retries:    appConfig.Grafana.Retries,
 			RetryDelay: appConfig.Grafana.RetryDelay.Duration,
 		},
-		Database: grafana.Database{
-			Host:     appConfig.MetricsDB.Host,
-			Port:     appConfig.MetricsDB.Port,
-			User:     appConfig.MetricsDB.User,
-			Password: appConfig.MetricsDB.Password,
-			DbName:   appConfig.MetricsDB.DbName,
-			SslMode:  appConfig.MetricsDB.SslMode,
-		},
 		Dashboard: grafana.Dashboard{
-			Name:      appConfig.Grafana.Dashboard.Name,
-			Folder:    appConfig.Grafana.Dashboard.Folder,
-			File:      appConfig.Grafana.Dashboard.File,
-			ImportVar: appConfig.Grafana.Dashboard.ImportVar,
+			Name:       appConfig.Grafana.Dashboard.Name,
+			Folder:     appConfig.Grafana.Dashboard.Folder,
+			File:       appConfig.Grafana.Dashboard.File,
+			DataSource: appConfig.Grafana.Dashboard.DataSource,
+			ImportVar:  appConfig.Grafana.Dashboard.ImportVar,
 		},
-		DataSource: grafana.DataSource{
-			Name:       appConfig.Grafana.DataSource.Name,
-			Type:      "grafana-postgresql-datasource",
-			URL:       appConfig.MetricsDB.Host + ":" + strconv.Itoa(appConfig.MetricsDB.Port),
-			Database:  appConfig.MetricsDB.DbName,
-			User:      appConfig.MetricsDB.User,
-			Password:  appConfig.MetricsDB.Password,
-			SSLMode:   appConfig.MetricsDB.SslMode,
-			IsDefault: false,
-		},
-		// Added the list of folders from appConfig to the provisioner config for use in provisionFolders
+		DataSources: dataSources,
 		FoldersMapping: nil, // Will be populated in grafana.RunProvisioning
 	}
 

@@ -20,10 +20,10 @@ type Duration struct {
 
 // AppConfig is the root structure containing all application configuration
 type AppConfig struct {
-	Log       LogConfig          `mapstructure:"log"`
-	Grafana   GrafanaConfig      `mapstructure:"grafana" validate:"required"`
-	Folders   []FolderConfig     `mapstructure:"folders"`
-	MetricsDB DbConnectionConfig `mapstructure:"metrics-db"`
+	Log         LogConfig      `mapstructure:"log"`
+	Grafana     GrafanaConfig  `mapstructure:"grafana" validate:"required"`
+	Folders     []FolderConfig `mapstructure:"folders"`
+	DataSources []DataSource   `mapstructure:"datasources"`
 }
 
 // LogConfig defines logging parameters
@@ -33,16 +33,6 @@ type LogConfig struct {
 	File   string `mapstructure:"file"`
 }
 
-// DbConnectionConfig defines database connection parameters for Grafana DataSource
-type DbConnectionConfig struct {
-    Host     string `mapstructure:"host" validate:"required"`
-    Port     int    `mapstructure:"port" validate:"required,min=1,max=65535"`
-    User     string `mapstructure:"user" validate:"required"`
-    Password string `mapstructure:"password" validate:"required"`
-    DbName   string `mapstructure:"dbname" validate:"required"`
-    SslMode  string `mapstructure:"sslmode" validate:"oneof=disable require verify-ca verify-full"`
-}
-
 // DbConnectionConfig defines grafana folder parameters
 type FolderConfig struct {
 	Name string `mapstructure:"name" validate:"required"`
@@ -50,15 +40,22 @@ type FolderConfig struct {
 
 // Dashboard defines parameters of grafana dashboard
 type Dashboard struct {
-	Name      string `mapstructure:"name" validate:"required"`
-	Folder    string `mapstructure:"folder"`
-	File      string `mapstructure:"file" validate:"required"`
-	ImportVar string `mapstructure:"import-var"`
+	Name       string `mapstructure:"name" validate:"required"`
+	Folder     string `mapstructure:"folder"`
+	File       string `mapstructure:"file" validate:"required"`
+	DataSource string `mapstructure:"datasource"`
+	ImportVar  string `mapstructure:"import-var"`
 }
 
-// Dashboard defines parameters of grafana datasource
+// Datasource defines parameters of grafana datasource
 type DataSource struct {
 	Name      string `mapstructure:"name" validate:"required"`
+    Host     string `mapstructure:"host" validate:"required"`
+    Port     int    `mapstructure:"port" validate:"required,min=1,max=65535"`
+    User     string `mapstructure:"user" validate:"required"`
+    Password string `mapstructure:"password" validate:"required"`
+    DbName   string `mapstructure:"dbname" validate:"required"`
+    SslMode  string `mapstructure:"sslmode" validate:"oneof=disable require verify-ca verify-full"`
 }
 
 // GrafanaConfig defines parameters for Grafana API client and provisioning
@@ -69,7 +66,6 @@ type GrafanaConfig struct {
 	Retries        int           `mapstructure:"retries" validate:"gt=0"`
 	RetryDelay     Duration      `mapstructure:"retry-delay" validate:"gt=0"`
 	Dashboard      Dashboard     `mapstructure:"dashboard"`
-	DataSource     DataSource    `mapstructure:"datasource"`
 }
 
 

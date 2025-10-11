@@ -14,18 +14,19 @@ grafana:
         name: elmon
         file: "assets/dashboard.json"
         folder: elmon
-        import-var: DS_ELMON_METRICS
-    datasource:
-        name: "elmon_metrics"
+        datasource: elmon_metrics
+        import-var: DS_ELMON_METRICS        
 
 folders:
     - name: elmon
     - name: test1
 
-metrics-db:
-    host: elmon-postgres-main
-    port: 5432
-    user: collector
-    password: ${METRICS_DB_PASSWORD}
-    dbname: metrics
-    sslmode: disable
+datasourses:
+    -
+        name: elmon_metrics
+        host: elmon-postgres-main
+        port: 5432
+        user: collector
+        password: ${METRICS_DB_PASSWORD}
+        dbname: metrics
+        sslmode: disable

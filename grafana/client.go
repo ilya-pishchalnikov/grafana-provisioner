@@ -61,6 +61,31 @@ func (apiClient *ApiClient) setDefaultHeaders() {
 	apiClient.Headers["Authorization"] = "Bearer " + apiClient.Token
 }
 
+// GetDataSource fetches a data source by its name.
+// Returns an error if the data source is not found (404) or on other API failures.
+func (client *ApiClient) GetDataSource(dataSourceName string) (*DataSource, error) {
+	client.Logger.Info("Searching for existing data source by name", "name", dataSourceName)
+
+	// URL-escape the data source name
+	urlPath := fmt.Sprintf("%s/api/datasources/name/%s", client.URL, strings.ReplaceAll(dataSourceName, " ", "%20"))
+
+	// Execute the GET request
+	resp, err := client.doRequest("GET", urlPath, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make get data source request: %w", err)
+	}
+
+	// The API returns the full data source model on success.
+	// We use the DataSource struct from types.go which is suitable for this.
+	dataSource := &DataSource{}
+	if err := json.NewDecoder(bytes.NewReader(resp)).Decode(dataSource); err != nil {
+		return nil, fmt.Errorf("failed to decode get data source response for '%s': %w", dataSourceName, err)
+	}
+
+	client.Logger.Info("Successfully found data source", "name", dataSource.Name, "uid", dataSource.UID)
+	return dataSource, nil
+}
+
 
 func (client *ApiClient) GetDataSources(log *slog.Logger) ([]DataSource, error) {
 	// Construct the full API URL

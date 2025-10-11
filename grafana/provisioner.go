@@ -21,7 +21,7 @@ func RunProvisioning(cfg Config, log *slog.Logger) error {
 	}
 
 	// 2. Provision Data Source
-	dsResponse, err := provisionDataSource(client, cfg, log)
+	_, err := provisionDataSources(client, cfg, log)
 	if err != nil {
 		return fmt.Errorf("data source provisioning failed: %w", err)
 	}
@@ -37,8 +37,14 @@ func RunProvisioning(cfg Config, log *slog.Logger) error {
 		return fmt.Errorf("dashboard folder validation failed: %w", err)
 	}
 
-	// 5. Provision Dashboard
-	if err := provisionDashboard(client, cfg, dsResponse.Datasource.UID, dashboardFolderUID, log); err != nil {
+	// 5. Get dashboard data source
+	dashboardDataSource, err := client.GetDataSource(cfg.Dashboard.DataSource)
+	if err != nil {
+		return fmt.Errorf("dashboard dataSource not found: %w", err)
+	}
+
+	// 6. Provision Dashboard
+	if err := provisionDashboard(client, cfg, dashboardDataSource.UID, dashboardFolderUID, log); err != nil {
 		return fmt.Errorf("dashboard provisioning failed: %w", err)
 	}
 
@@ -154,17 +160,31 @@ func waitForGrafanaAPI(client *ApiClient) error {
 	return fmt.Errorf("failed to reach Grafana API after %d attempts", client.Retries)
 }
 
-// Helper to create the data source
-func provisionDataSource(client *ApiClient, cfg Config, log *slog.Logger) (*CreateDataSourceResponse, error) {
-	// Получение списка всех существующих источников данных
+func provisionDataSources(client *ApiClient, cfg Config, log *slog.Logger) (*[]CreateDataSourceResponse, error) {
 	existingSources, err := client.GetDataSources(log)
-    if err != nil {
-        return nil, fmt.Errorf("failed to list existing data sources: %w", err)
-    }
+	if err != nil {
+		return nil, fmt.Errorf("failed to list existing data sources: %w", err)
+	}
 
+	sourceResponses := []CreateDataSourceResponse{}
+
+	for _, dataSource := range cfg.DataSources {
+		sourceResponce, err := provisionDataSource(client, dataSource, existingSources, log)
+		if err != nil {
+			return nil, fmt.Errorf("failed to provision datasource '%s': %w", dataSource.Name, err)
+		}
+
+		sourceResponses = append(sourceResponses, *sourceResponce);
+	}
+
+	return &sourceResponses, nil
+}
+
+// Helper to create the data source
+func provisionDataSource(client *ApiClient, dataSource DataSource, existingSources []DataSource, log *slog.Logger) (*CreateDataSourceResponse, error) {
     // Проверка, существует ли источник данных с тем же типом, URL и базой данных
     for _, source := range existingSources {
-        if source.Type == cfg.DataSource.Type && source.URL == cfg.DataSource.URL && source.Database == cfg.DataSource.Database {
+        if source.Type == dataSource.Type && source.URL == dataSource.URL && source.Database == dataSource.Database {
             log.Info(fmt.Sprintf("data source of type '%s' with URL '%s' and database '%s' already exists (ID: %d). Skipping creation.", 
                 source.Type, source.URL, source.Database, source.ID))
 
@@ -180,8 +200,8 @@ func provisionDataSource(client *ApiClient, cfg Config, log *slog.Logger) (*Crea
     }
 	
 	// Проверка на дублирование имени и инкремент
-    sourceToCreate := cfg.DataSource
-    baseName := cfg.DataSource.Name
+    sourceToCreate := dataSource
+    baseName := dataSource.Name
 
 	for i := 0; ; i++ {
         currentName := baseName

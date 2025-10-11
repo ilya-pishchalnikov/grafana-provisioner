@@ -55,22 +55,13 @@ type DashboardImportRequest struct {
 // DashboardJSON represents the complete dashboard JSON
 type DashboardJSON map[string]interface{}
 
-// Database represents the database for data source
-type Database struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	DbName   string
-	SslMode  string
-}
-
-// Database represents the data for dashboard creation
+// Dashboard represents the data for dashboard creation
 type Dashboard struct {
-	Name      string
-	Folder    string
-	File      string
-	ImportVar string
+	Name       string
+	Folder     string
+	File       string
+	DataSource string
+	ImportVar  string
 }
 
 // DataSource represents the data for data source creation
@@ -97,9 +88,8 @@ type FolderMapping struct {
 // Config defines the configuration subset needed for provisioning
 type Config struct {
 	Grafana        ClientParams
-	Database       Database
 	Dashboard      Dashboard
-	DataSource     DataSource
+	DataSources    []DataSource
 	Folders        []config.FolderConfig 
 	FoldersMapping map[string]FolderMapping
 }
