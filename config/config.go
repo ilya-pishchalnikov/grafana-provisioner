@@ -39,13 +39,19 @@ type FolderConfig struct {
 	Name string `mapstructure:"name" validate:"required"`
 }
 
+// Import defines a single variable mapping for data source injection in config package.
+type Import struct {
+    Name       string `mapstructure:"name" validate:"required"` // The dashboard variable name
+    DataSource string `mapstructure:"datasource" validate:"required"` // The data source name
+}
+
 // Dashboard defines parameters of grafana dashboard
 type Dashboard struct {
 	Name       string `mapstructure:"name" validate:"required"`
 	Folder     string `mapstructure:"folder"`
 	File       string `mapstructure:"file" validate:"required"`
 	DataSource string `mapstructure:"datasource"`
-	ImportVar  string `mapstructure:"import-var"`
+	Imports    []Import `mapstructure:"imports" validate:"required"`
 }
 
 // Datasource defines parameters of grafana datasource

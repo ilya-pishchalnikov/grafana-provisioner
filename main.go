@@ -42,14 +42,15 @@ func main() {
 	log.Info("Provisioner logger started")
 
 
-	// 3. Prepare Grafana Provisioning Configuration
-
+	// 3. Convert config types to grafana provisioner types
+	
 	dataSources := []grafana.DataSource{}
 
 	for _, dataSourceConfig := range appConfig.DataSources {
-		dataSource := grafana.DataSource{
+		// PostgreSQL is hardcoded for now, type is always grafana-postgresql-datasource
+		dataSource := grafana.DataSource {
 			Name:      dataSourceConfig.Name,
-			Type:      "grafana-postgresql-datasource",
+			Type:      "grafana-postgresql-datasource", 
 			URL:       dataSourceConfig.Host + ":" + strconv.Itoa(dataSourceConfig.Port),
 			Database:  dataSourceConfig.DbName,
 			User:      dataSourceConfig.User,
@@ -64,15 +65,32 @@ func main() {
 	dashboards := []grafana.Dashboard{}
 
 	for _, dashboardConfig := range appConfig.Dashboards {
+		// Convert imports
+		dashboardImports := []grafana.DashboardImport{}
+		for _, importConfig := range dashboardConfig.Imports {
+			dashboardImports = append(dashboardImports, grafana.DashboardImport{
+				Name:       importConfig.Name,
+				DataSource: importConfig.DataSource,
+			})
+		}
+		
 		dashboard := grafana.Dashboard {
 			Name:       dashboardConfig.Name,
 			Folder:     dashboardConfig.Folder,
 			File:       dashboardConfig.File,
-			DataSource: dashboardConfig.DataSource,
-			ImportVar:  dashboardConfig.ImportVar,
+			Imports:    dashboardImports,
 		}
 
 		dashboards = append(dashboards, dashboard)
+	}
+	
+	folders := []grafana.Folder{}
+
+	for _, folderConfig := range appConfig.Folders {
+		folder := grafana.Folder {
+			Name: folderConfig.Name,
+		}
+		folders = append(folders, folder)
 	}
 
 
@@ -86,13 +104,9 @@ func main() {
 		},
 		Dashboards: dashboards,
 		DataSources: dataSources,
+		Folders: folders, // Use the converted slice
 		FoldersMapping: nil, // Will be populated in grafana.RunProvisioning
 	}
-
-	// Set the Folders field in the Dashboard struct to the list of folders from appConfig
-	// This is a small hack, but it simplifies parameter passing for the new provisionFolders function.
-	// TODO decouple it
-	provisionerConfig.Folders = appConfig.Folders
 
 	// 4. Run Provisioning
 	if err := grafana.RunProvisioning(provisionerConfig, log); err != nil {

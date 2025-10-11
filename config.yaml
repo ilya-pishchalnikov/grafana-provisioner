@@ -16,8 +16,10 @@ dashboards:
         name: elmon
         file: "assets/dashboard.json"
         folder: elmon
-        datasource: elmon_metrics
-        import-var: DS_ELMON_METRICS        
+        imports: 
+            -
+                name: DS_ELMON_METRICS
+                datasource: elmon_metrics
 
 folders:
     - name: elmon

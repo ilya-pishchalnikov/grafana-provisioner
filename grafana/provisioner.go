@@ -55,14 +55,8 @@ func provisionDashboards(client *ApiClient, cfg Config, log *slog.Logger) error 
 			return fmt.Errorf("dashboard folder validation failed for dashboard '%s': %w", dashboardConfig.Name, err)
 		}
 
-		// 2. Get dashboard data source
-		dashboardDataSource, err := client.GetDataSource(dashboardConfig.DataSource)
-		if err != nil {
-			return fmt.Errorf("dashboard dataSource '%s' not found for dashboard '%s': %w", dashboardConfig.DataSource, dashboardConfig.Name, err)
-		}
-
-		// 3. Provision the specific dashboard
-		if err := provisionDashboard(client, dashboardConfig, dashboardDataSource.UID, dashboardFolderUID, log); err != nil {
+		// 2. Provision the specific dashboard
+		if err := provisionDashboard(client, dashboardConfig, dashboardFolderUID, log); err != nil {
 			return fmt.Errorf("dashboard provisioning failed for dashboard '%s': %w", dashboardConfig.Name, err)
 		}
 	}
@@ -115,7 +109,7 @@ func getDashboardFolderUID(cfg Config, dashboardConfig Dashboard, log *slog.Logg
 			log.Info("Using 'General' folder UID from mapping", "uid", mapping.UID)
 			return mapping.UID, nil
 		}
-		
+
 		// If still not mapped and retrieval failed, rely on API default behavior.
 		log.Info("Using default folder UID for 'General' folder (empty string or General)")
 		return "", nil 
@@ -260,7 +254,7 @@ func provisionDataSource(client *ApiClient, dataSource DataSource, existingSourc
 }
 
 // Helper to import the dashboard
-func provisionDashboard(client *ApiClient, cfg Dashboard, dsUID string, folderUID string, log *slog.Logger) error {
+func provisionDashboard(client *ApiClient, cfg Dashboard, folderUID string, log *slog.Logger) error {
 	log.Info("Reading dashboard file", "file", cfg.File)
 	data, err := os.ReadFile(cfg.File)
 	if err != nil {
@@ -272,9 +266,22 @@ func provisionDashboard(client *ApiClient, cfg Dashboard, dsUID string, folderUI
 		return fmt.Errorf("failed to parse dashboard JSON: %w", err)
 	}
 
+	// 1. Prepare input values map by resolving all data source UIDs
+	inputValues := make(map[string]string)
+	for _, importCfg := range cfg.Imports {
+		// Get data source by name
+		dashboardDataSource, err := client.GetDataSource(importCfg.DataSource)
+		if err != nil {
+			return fmt.Errorf("dashboard dataSource '%s' not found for dashboard '%s' (variable '%s'): %w", importCfg.DataSource, cfg.Name, importCfg.Name, err)
+		}
+		
+		// Map variable name to data source UID
+		inputValues[importCfg.Name] = dashboardDataSource.UID
+	}
+
 	existingDashboard, err := client.FindFirstDashboardByFolderAndName(cfg.Name, cfg.Folder, log)
 	if err != nil {
-		return fmt.Errorf("failed to find existsting dashboard: %w", err)
+		return fmt.Errorf("failed to find existing dashboard: %w", err)
 	}
 
 	rawDashboard["title"] = cfg.Name
@@ -288,11 +295,7 @@ func provisionDashboard(client *ApiClient, cfg Dashboard, dsUID string, folderUI
 		folderUID = "" // Grafana API uses empty/nil folder UID for the 'General' folder
 	}
 	
-	inputValues := map[string]string{
-        cfg.ImportVar: dsUID,
-    }
-
-	// 2. Prepare inputs from the exported data or provided values
+	// 2. Prepare inputs from the exported data
 	var inputs []interface{}
 	if exportedInputs, exists := rawDashboard["__inputs"]; exists {
 		inputsSlice, ok := exportedInputs.([]interface{})
